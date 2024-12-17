@@ -17,7 +17,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// protecting routes iwht middleware
+// JWT Authentication Middleware
 const authenticateToken = (req, res, next) => {
   const token = req.header('Authorization')?.split(' ')[1]; // Bearer Token
   if (!token) return res.status(401).json({ message: 'Access denied' });
@@ -33,40 +33,33 @@ const authenticateToken = (req, res, next) => {
 
 
 // Serve static files from the "public" directory
-app.use(express.static(path.join(__dirname, 'public'))); // just in case if we use public
+app.use(express.static(path.join(__dirname, 'public')));
+
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI);
-
 mongoose.connection.on('connected', () => {
   console.log(`Connected to MongoDB ${mongoose.connection.name}.`);
 });
 
-// register 
-app.post('/register',
+// Register Route
+app.post(
+  '/register',
   body('username').isString().notEmpty().withMessage('Username is required'),
-  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'), // Basic length validation
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    // password regex validation
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!passwordRegex.test(req.body.password)) {
-      return res.status(400).send("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.");
-    }
-
     try {
       const { username, password } = req.body;
-
       const userExists = await User.findOne({ username });
       if (userExists) {
         return res.status(400).json({ message: 'Username already taken' });
       }
 
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const newUser = new User({ username, password: hashedPassword });
+      const newUser = new User({ username, password });
       await newUser.save();
 
       res.status(201).json({ message: 'User registered successfully' });
@@ -96,9 +89,6 @@ app.post('/login', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-
-
 
 // Routes go here
 app.get('/', (req, res) => {
