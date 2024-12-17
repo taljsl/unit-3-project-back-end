@@ -52,6 +52,11 @@ app.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
+    const passwordRegex =/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(req.body.password)) {
+      return res.send("Please make sure you add at least one capital, one special character and one number.");
+    }
+
     try {
       const { username, password } = req.body;
       const userExists = await User.findOne({ username });
